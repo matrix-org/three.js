@@ -1,5 +1,5 @@
 {
-  "name": "three",
+  "name": "@thirdroom/three",
   "version": "0.143.0",
   "description": "JavaScript 3D library",
   "type": "module",
