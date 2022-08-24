@@ -1766,7 +1766,7 @@ function WebGLRenderer( parameters = {} ) {
 
 		}
 
-		if ( refreshMaterial ) {
+		if ( refreshMaterial || material.uniformsNeedUpdate ) {
 
 			p_uniforms.setValue( _gl, 'toneMappingExposure', _this.toneMappingExposure );
 
@@ -1796,13 +1796,6 @@ function WebGLRenderer( parameters = {} ) {
 			materials.refreshMaterialUniforms( m_uniforms, material, _pixelRatio, _height, _transmissionRenderTarget );
 
 			WebGLUniforms.upload( _gl, materialProperties.uniformsList, m_uniforms, textures );
-
-		}
-
-		if ( material.isShaderMaterial && material.uniformsNeedUpdate === true ) {
-
-			WebGLUniforms.upload( _gl, materialProperties.uniformsList, m_uniforms, textures );
-			material.uniformsNeedUpdate = false;
 
 		}
 
