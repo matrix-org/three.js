@@ -72,6 +72,7 @@ class Material extends EventDispatcher {
 		this.userData = {};
 
 		this.version = 0;
+		this.uniformsNeedUpdate = false;
 
 		this._alphaTest = 0;
 

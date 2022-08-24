@@ -46,7 +46,6 @@ class ShaderMaterial extends Material {
 		};
 
 		this.index0AttributeName = undefined;
-		this.uniformsNeedUpdate = false;
 
 		this.glslVersion = null;
 
