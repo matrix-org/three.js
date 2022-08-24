@@ -6705,6 +6705,7 @@ class Material extends EventDispatcher {
 		this.toneMapped = true;
 		this.userData = {};
 		this.version = 0;
+		this.uniformsNeedUpdate = false;
 		this._alphaTest = 0;
 	}
 
@@ -8767,7 +8768,6 @@ class ShaderMaterial extends Material {
 			'uv2': [0, 0]
 		};
 		this.index0AttributeName = undefined;
-		this.uniformsNeedUpdate = false;
 		this.glslVersion = null;
 
 		if (parameters !== undefined) {
@@ -18864,9 +18864,9 @@ function WebGLMaterials(renderer, properties) {
 		} else if (material.isShadowMaterial) {
 			uniforms.color.value.copy(material.color);
 			uniforms.opacity.value = material.opacity;
-		} else if (material.isShaderMaterial) {
-			material.uniformsNeedUpdate = false; // #15581
 		}
+
+		material.uniformsNeedUpdate = false; // #15581
 	}
 
 	function refreshUniformsCommon(uniforms, material) {
@@ -20663,7 +20663,7 @@ function WebGLRenderer(parameters = {}) {
 			m_uniforms.flipEnvMap.value = envMap.isCubeTexture && envMap.isRenderTargetTexture === false ? -1 : 1;
 		}
 
-		if (refreshMaterial) {
+		if (refreshMaterial || material.uniformsNeedUpdate) {
 			p_uniforms.setValue(_gl, 'toneMappingExposure', _this.toneMappingExposure);
 
 			if (materialProperties.needsLights) {
@@ -20684,11 +20684,6 @@ function WebGLRenderer(parameters = {}) {
 
 			materials.refreshMaterialUniforms(m_uniforms, material, _pixelRatio, _height, _transmissionRenderTarget);
 			WebGLUniforms.upload(_gl, materialProperties.uniformsList, m_uniforms, textures);
-		}
-
-		if (material.isShaderMaterial && material.uniformsNeedUpdate === true) {
-			WebGLUniforms.upload(_gl, materialProperties.uniformsList, m_uniforms, textures);
-			material.uniformsNeedUpdate = false;
 		}
 
 		if (material.isSpriteMaterial) {
