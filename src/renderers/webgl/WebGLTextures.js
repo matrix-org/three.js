@@ -675,7 +675,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		let textureType = _gl.TEXTURE_2D;
 
-		if ( texture.isDataArrayTexture ) textureType = _gl.TEXTURE_2D_ARRAY;
+		if ( texture.isDataArrayTexture || texture.isArrayTexture ) textureType = _gl.TEXTURE_2D_ARRAY;
 		if ( texture.isData3DTexture ) textureType = _gl.TEXTURE_3D;
 
 		const forceUpload = initTexture( textureProperties, texture );
@@ -915,6 +915,20 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 				} else {
 
 					state.texImage3D( _gl.TEXTURE_2D_ARRAY, 0, glInternalFormat, image.width, image.height, image.depth, 0, glFormat, glType, image.data );
+
+				}
+
+			} else if ( texture.isArrayTexture ) {
+
+				if ( allocateMemory ) {
+
+					state.texStorage3D( _gl.TEXTURE_2D_ARRAY, levels, glInternalFormat, image.width, image.height, image.depth );
+
+				}
+
+				for ( let i = 0; i < image.images.length; i ++ ) {
+
+					state.texSubImage3D( _gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, image.width, image.height, 1, glFormat, glType, image.images[ i ] );
 
 				}
 
