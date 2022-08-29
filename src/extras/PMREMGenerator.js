@@ -7,7 +7,9 @@ import {
 	NoToneMapping,
 	NoBlending,
 	RGBAFormat,
-	HalfFloatType
+	HalfFloatType,
+	EquirectangularReflectionMapping,
+	EquirectangularRefractionMapping
 } from '../constants.js';
 
 import { BufferAttribute } from '../core/BufferAttribute.js';
@@ -19,6 +21,7 @@ import { ShaderMaterial } from '../materials/ShaderMaterial.js';
 import { Vector3 } from '../math/Vector3.js';
 import { Color } from '../math/Color.js';
 import { WebGLRenderTarget } from '../renderers/WebGLRenderTarget.js';
+import { WebGLArrayRenderTarget } from '../renderers/WebGLArrayRenderTarget.js';
 import { MeshBasicMaterial } from '../materials/MeshBasicMaterial.js';
 import { BoxGeometry } from '../geometries/BoxGeometry.js';
 import { BackSide } from '../constants.js';
@@ -89,8 +92,6 @@ class PMREMGenerator {
 		this._cubemapMaterial = null;
 		this._equirectMaterial = null;
 
-		this._compileMaterial( this._blurMaterial );
-
 	}
 
 	/**
@@ -113,7 +114,7 @@ class PMREMGenerator {
 
 		if ( sigma > 0 ) {
 
-			this._blur( cubeUVRenderTarget, 0, 0, sigma );
+			this._blur( cubeUVRenderTarget, undefined, 0, 0, sigma );
 
 		}
 
@@ -132,6 +133,12 @@ class PMREMGenerator {
 	fromEquirectangular( equirectangular, renderTarget = null ) {
 
 		return this._fromTexture( equirectangular, renderTarget );
+
+	}
+
+	fromEquirectangularArray( equirectangularTextures ) {
+
+		return this._fromTextures( equirectangularTextures );
 
 	}
 
@@ -244,22 +251,46 @@ class PMREMGenerator {
 
 	}
 
-	_allocateTargets() {
+	_fromTextures( textures ) {
+
+		this._setSize( textures[ 0 ].image.width / 4 );
+
+		_oldTarget = this._renderer.getRenderTarget();
+
+		const cubeUVRenderTarget = this._allocateTargets( textures.length );
+
+		for ( let i = 0; i < textures.length; i ++ ) {
+
+			const texture = textures[ i ];
+
+			if (
+				! (
+					texture.mapping === EquirectangularReflectionMapping ||
+					texture.mapping === EquirectangularRefractionMapping
+				)
+			) {
+
+				console.warn( 'THREE.PMREMGenerator texture array must be created from equirectangular cubemaps' );
+
+			}
+
+			this._textureToCubeUV( texture, cubeUVRenderTarget, i );
+			this._applyPMREM( cubeUVRenderTarget, i );
+
+		}
+
+		this._cleanup( cubeUVRenderTarget );
+
+		return cubeUVRenderTarget;
+
+	}
+
+	_allocateTargets( depth = 0 ) {
 
 		const width = 3 * Math.max( this._cubeSize, 16 * 7 );
 		const height = 4 * this._cubeSize;
 
-		const params = {
-			magFilter: LinearFilter,
-			minFilter: LinearFilter,
-			generateMipmaps: false,
-			type: HalfFloatType,
-			format: RGBAFormat,
-			encoding: LinearEncoding,
-			depthBuffer: false
-		};
-
-		const cubeUVRenderTarget = _createRenderTarget( width, height, params );
+		const cubeUVRenderTarget = _createRenderTarget( width, height, depth );
 
 		if ( this._pingPongRenderTarget === null || this._pingPongRenderTarget.width !== width ) {
 
@@ -269,12 +300,12 @@ class PMREMGenerator {
 
 			}
 
-			this._pingPongRenderTarget = _createRenderTarget( width, height, params );
+			this._pingPongRenderTarget = _createRenderTarget( width, height, depth );
 
 			const { _lodMax } = this;
 			( { sizeLods: this._sizeLods, lodPlanes: this._lodPlanes, sigmas: this._sigmas } = _createPlanes( _lodMax ) );
 
-			this._blurMaterial = _getBlurShader( _lodMax, width, height );
+			this._blurMaterial = _getBlurShader( _lodMax, width, height, depth );
 
 		}
 
@@ -380,7 +411,7 @@ class PMREMGenerator {
 
 	}
 
-	_textureToCubeUV( texture, cubeUVRenderTarget ) {
+	_textureToCubeUV( texture, cubeUVRenderTarget, renderTargetIndex ) {
 
 		const renderer = this._renderer;
 
@@ -417,12 +448,12 @@ class PMREMGenerator {
 
 		_setViewport( cubeUVRenderTarget, 0, 0, 3 * size, 2 * size );
 
-		renderer.setRenderTarget( cubeUVRenderTarget );
+		renderer.setRenderTarget( cubeUVRenderTarget, renderTargetIndex );
 		renderer.render( mesh, _flatCamera );
 
 	}
 
-	_applyPMREM( cubeUVRenderTarget ) {
+	_applyPMREM( cubeUVRenderTarget, renderTargetIndex ) {
 
 		const renderer = this._renderer;
 		const autoClear = renderer.autoClear;
@@ -434,7 +465,7 @@ class PMREMGenerator {
 
 			const poleAxis = _axisDirections[ ( i - 1 ) % _axisDirections.length ];
 
-			this._blur( cubeUVRenderTarget, i - 1, i, sigma, poleAxis );
+			this._blur( cubeUVRenderTarget, renderTargetIndex, i - 1, i, sigma, poleAxis );
 
 		}
 
@@ -449,13 +480,15 @@ class PMREMGenerator {
 	 * the poles) to approximate the orthogonally-separable blur. It is least
 	 * accurate at the poles, but still does a decent job.
 	 */
-	_blur( cubeUVRenderTarget, lodIn, lodOut, sigma, poleAxis ) {
+	_blur( cubeUVRenderTarget, renderTargetIndex, lodIn, lodOut, sigma, poleAxis ) {
 
 		const pingPongRenderTarget = this._pingPongRenderTarget;
 
 		this._halfBlur(
 			cubeUVRenderTarget,
+			renderTargetIndex,
 			pingPongRenderTarget,
+			renderTargetIndex,
 			lodIn,
 			lodOut,
 			sigma,
@@ -464,7 +497,9 @@ class PMREMGenerator {
 
 		this._halfBlur(
 			pingPongRenderTarget,
+			renderTargetIndex,
 			cubeUVRenderTarget,
+			renderTargetIndex,
 			lodOut,
 			lodOut,
 			sigma,
@@ -473,7 +508,7 @@ class PMREMGenerator {
 
 	}
 
-	_halfBlur( targetIn, targetOut, lodIn, lodOut, sigmaRadians, direction, poleAxis ) {
+	_halfBlur( targetIn, inIndex, targetOut, outIndex, lodIn, lodOut, sigmaRadians, direction, poleAxis ) {
 
 		const renderer = this._renderer;
 		const blurMaterial = this._blurMaterial;
@@ -532,6 +567,7 @@ class PMREMGenerator {
 		}
 
 		blurUniforms[ 'envMap' ].value = targetIn.texture;
+		blurUniforms[ 'envMapIndex' ].value = inIndex;
 		blurUniforms[ 'samples' ].value = samples;
 		blurUniforms[ 'weights' ].value = weights;
 		blurUniforms[ 'latitudinal' ].value = direction === 'latitudinal';
@@ -551,7 +587,7 @@ class PMREMGenerator {
 		const y = 4 * ( this._cubeSize - outputSize );
 
 		_setViewport( targetOut, x, y, 3 * outputSize, 2 * outputSize );
-		renderer.setRenderTarget( targetOut );
+		renderer.setRenderTarget( targetOut, outIndex );
 		renderer.render( blurMesh, _flatCamera );
 
 	}
@@ -640,12 +676,30 @@ function _createPlanes( lodMax ) {
 
 }
 
-function _createRenderTarget( width, height, params ) {
+function _createRenderTarget( width, height, depth ) {
 
-	const cubeUVRenderTarget = new WebGLRenderTarget( width, height, params );
+	let cubeUVRenderTarget;
+
+	if ( depth ) {
+
+		cubeUVRenderTarget = new WebGLArrayRenderTarget( width, height, depth );
+
+	} else {
+
+		cubeUVRenderTarget = new WebGLRenderTarget( width, height );
+
+	}
+
 	cubeUVRenderTarget.texture.mapping = CubeUVReflectionMapping;
 	cubeUVRenderTarget.texture.name = 'PMREM.cubeUv';
+	cubeUVRenderTarget.texture.magFilter = LinearFilter;
+	cubeUVRenderTarget.texture.minFilter = LinearFilter;
+	cubeUVRenderTarget.texture.generateMipmaps = false;
+	cubeUVRenderTarget.texture.type = HalfFloatType;
+	cubeUVRenderTarget.texture.format = RGBAFormat;
+	cubeUVRenderTarget.texture.encoding = LinearEncoding;
 	cubeUVRenderTarget.scissorTest = true;
+	cubeUVRenderTarget.depthBuffer = false;
 	return cubeUVRenderTarget;
 
 }
@@ -657,7 +711,7 @@ function _setViewport( target, x, y, width, height ) {
 
 }
 
-function _getBlurShader( lodMax, width, height ) {
+function _getBlurShader( lodMax, width, height, depth ) {
 
 	const weights = new Float32Array( MAX_SAMPLES );
 	const poleAxis = new Vector3( 0, 1, 0 );
@@ -670,10 +724,12 @@ function _getBlurShader( lodMax, width, height ) {
 			'CUBEUV_TEXEL_WIDTH': 1.0 / width,
 			'CUBEUV_TEXEL_HEIGHT': 1.0 / height,
 			'CUBEUV_MAX_MIP': `${lodMax}.0`,
+			'CUBEUV_2D_SAMPLER_ARRAY': depth ? '' : undefined
 		},
 
 		uniforms: {
 			'envMap': { value: null },
+			'envMapIndex': { value: 0 },
 			'samples': { value: 1 },
 			'weights': { value: weights },
 			'latitudinal': { value: false },
@@ -691,7 +747,13 @@ function _getBlurShader( lodMax, width, height ) {
 
 			varying vec3 vOutputDirection;
 
+			#ifdef CUBEUV_2D_SAMPLER_ARRAY
+			uniform mediump sampler2DArray envMap;
+			#else
 			uniform sampler2D envMap;
+			#endif
+
+			uniform float envMapIndex;
 			uniform int samples;
 			uniform float weights[ n ];
 			uniform bool latitudinal;
@@ -710,7 +772,12 @@ function _getBlurShader( lodMax, width, height ) {
 					+ cross( axis, vOutputDirection ) * sin( theta )
 					+ axis * dot( axis, vOutputDirection ) * ( 1.0 - cosTheta );
 
-				return bilinearCubeUV( envMap, sampleDirection, mipInt );
+				#ifdef CUBEUV_2D_SAMPLER_ARRAY
+					vec3 sampleParams = vec3( CUBEUV_MAX_MIP, CUBEUV_TEXEL_WIDTH, CUBEUV_TEXEL_HEIGHT );
+					return bilinearCubeUVArray( envMap, envMapIndex, sampleParams, sampleDirection, mipInt );
+				#else
+					return bilinearCubeUV( envMap, sampleDirection, mipInt );
+				#endif
 
 			}
 
