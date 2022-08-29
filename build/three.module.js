@@ -3,7 +3,7 @@
  * Copyright 2010-2022 Three.js Authors
  * SPDX-License-Identifier: MIT
  */
-const REVISION = '144dev';
+const REVISION = '144dev-thirdroom';
 const MOUSE = { LEFT: 0, MIDDLE: 1, RIGHT: 2, ROTATE: 0, DOLLY: 1, PAN: 2 };
 const TOUCH = { ROTATE: 0, PAN: 1, DOLLY_PAN: 2, DOLLY_ROTATE: 3 };
 const CullFaceNone = 0;
@@ -12967,7 +12967,7 @@ var color_vertex = "#if defined( USE_COLOR_ALPHA )\n\tvColor = vec4( 1.0 );\n#el
 
 var common = "#define PI 3.141592653589793\n#define PI2 6.283185307179586\n#define PI_HALF 1.5707963267948966\n#define RECIPROCAL_PI 0.3183098861837907\n#define RECIPROCAL_PI2 0.15915494309189535\n#define EPSILON 1e-6\n#ifndef saturate\n#define saturate( a ) clamp( a, 0.0, 1.0 )\n#endif\n#define whiteComplement( a ) ( 1.0 - saturate( a ) )\nfloat pow2( const in float x ) { return x*x; }\nvec3 pow2( const in vec3 x ) { return x*x; }\nfloat pow3( const in float x ) { return x*x*x; }\nfloat pow4( const in float x ) { float x2 = x*x; return x2*x2; }\nfloat max3( const in vec3 v ) { return max( max( v.x, v.y ), v.z ); }\nfloat average( const in vec3 v ) { return dot( v, vec3( 0.3333333 ) ); }\nhighp float rand( const in vec2 uv ) {\n\tconst highp float a = 12.9898, b = 78.233, c = 43758.5453;\n\thighp float dt = dot( uv.xy, vec2( a,b ) ), sn = mod( dt, PI );\n\treturn fract( sin( sn ) * c );\n}\n#ifdef HIGH_PRECISION\n\tfloat precisionSafeLength( vec3 v ) { return length( v ); }\n#else\n\tfloat precisionSafeLength( vec3 v ) {\n\t\tfloat maxComponent = max3( abs( v ) );\n\t\treturn length( v / maxComponent ) * maxComponent;\n\t}\n#endif\nstruct IncidentLight {\n\tvec3 color;\n\tvec3 direction;\n\tbool visible;\n};\nstruct ReflectedLight {\n\tvec3 directDiffuse;\n\tvec3 directSpecular;\n\tvec3 indirectDiffuse;\n\tvec3 indirectSpecular;\n};\nstruct GeometricContext {\n\tvec3 position;\n\tvec3 normal;\n\tvec3 viewDir;\n#ifdef USE_CLEARCOAT\n\tvec3 clearcoatNormal;\n#endif\n};\nvec3 transformDirection( in vec3 dir, in mat4 matrix ) {\n\treturn normalize( ( matrix * vec4( dir, 0.0 ) ).xyz );\n}\nvec3 inverseTransformDirection( in vec3 dir, in mat4 matrix ) {\n\treturn normalize( ( vec4( dir, 0.0 ) * matrix ).xyz );\n}\nmat3 transposeMat3( const in mat3 m ) {\n\tmat3 tmp;\n\ttmp[ 0 ] = vec3( m[ 0 ].x, m[ 1 ].x, m[ 2 ].x );\n\ttmp[ 1 ] = vec3( m[ 0 ].y, m[ 1 ].y, m[ 2 ].y );\n\ttmp[ 2 ] = vec3( m[ 0 ].z, m[ 1 ].z, m[ 2 ].z );\n\treturn tmp;\n}\nfloat luminance( const in vec3 rgb ) {\n\tconst vec3 weights = vec3( 0.2126729, 0.7151522, 0.0721750 );\n\treturn dot( weights, rgb );\n}\nbool isPerspectiveMatrix( mat4 m ) {\n\treturn m[ 2 ][ 3 ] == - 1.0;\n}\nvec2 equirectUv( in vec3 dir ) {\n\tfloat u = atan( dir.z, dir.x ) * RECIPROCAL_PI2 + 0.5;\n\tfloat v = asin( clamp( dir.y, - 1.0, 1.0 ) ) * RECIPROCAL_PI + 0.5;\n\treturn vec2( u, v );\n}";
 
-var cube_uv_reflection_fragment = "#ifdef ENVMAP_TYPE_CUBE_UV\n\t#define cubeUV_minMipLevel 4.0\n\t#define cubeUV_minTileSize 16.0\n\tfloat getFace( vec3 direction ) {\n\t\tvec3 absDirection = abs( direction );\n\t\tfloat face = - 1.0;\n\t\tif ( absDirection.x > absDirection.z ) {\n\t\t\tif ( absDirection.x > absDirection.y )\n\t\t\t\tface = direction.x > 0.0 ? 0.0 : 3.0;\n\t\t\telse\n\t\t\t\tface = direction.y > 0.0 ? 1.0 : 4.0;\n\t\t} else {\n\t\t\tif ( absDirection.z > absDirection.y )\n\t\t\t\tface = direction.z > 0.0 ? 2.0 : 5.0;\n\t\t\telse\n\t\t\t\tface = direction.y > 0.0 ? 1.0 : 4.0;\n\t\t}\n\t\treturn face;\n\t}\n\tvec2 getUV( vec3 direction, float face ) {\n\t\tvec2 uv;\n\t\tif ( face == 0.0 ) {\n\t\t\tuv = vec2( direction.z, direction.y ) / abs( direction.x );\n\t\t} else if ( face == 1.0 ) {\n\t\t\tuv = vec2( - direction.x, - direction.z ) / abs( direction.y );\n\t\t} else if ( face == 2.0 ) {\n\t\t\tuv = vec2( - direction.x, direction.y ) / abs( direction.z );\n\t\t} else if ( face == 3.0 ) {\n\t\t\tuv = vec2( - direction.z, direction.y ) / abs( direction.x );\n\t\t} else if ( face == 4.0 ) {\n\t\t\tuv = vec2( - direction.x, direction.z ) / abs( direction.y );\n\t\t} else {\n\t\t\tuv = vec2( direction.x, direction.y ) / abs( direction.z );\n\t\t}\n\t\treturn 0.5 * ( uv + 1.0 );\n\t}\n\tvec3 bilinearCubeUV( sampler2D envMap, vec3 direction, float mipInt ) {\n\t\tfloat face = getFace( direction );\n\t\tfloat filterInt = max( cubeUV_minMipLevel - mipInt, 0.0 );\n\t\tmipInt = max( mipInt, cubeUV_minMipLevel );\n\t\tfloat faceSize = exp2( mipInt );\n\t\tvec2 uv = getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0;\n\t\tif ( face > 2.0 ) {\n\t\t\tuv.y += faceSize;\n\t\t\tface -= 3.0;\n\t\t}\n\t\tuv.x += face * faceSize;\n\t\tuv.x += filterInt * 3.0 * cubeUV_minTileSize;\n\t\tuv.y += 4.0 * ( exp2( CUBEUV_MAX_MIP ) - faceSize );\n\t\tuv.x *= CUBEUV_TEXEL_WIDTH;\n\t\tuv.y *= CUBEUV_TEXEL_HEIGHT;\n\t\t#ifdef texture2DGradEXT\n\t\t\treturn texture2DGradEXT( envMap, uv, vec2( 0.0 ), vec2( 0.0 ) ).rgb;\n\t\t#else\n\t\t\treturn texture2D( envMap, uv ).rgb;\n\t\t#endif\n\t}\n\t#define cubeUV_r0 1.0\n\t#define cubeUV_v0 0.339\n\t#define cubeUV_m0 - 2.0\n\t#define cubeUV_r1 0.8\n\t#define cubeUV_v1 0.276\n\t#define cubeUV_m1 - 1.0\n\t#define cubeUV_r4 0.4\n\t#define cubeUV_v4 0.046\n\t#define cubeUV_m4 2.0\n\t#define cubeUV_r5 0.305\n\t#define cubeUV_v5 0.016\n\t#define cubeUV_m5 3.0\n\t#define cubeUV_r6 0.21\n\t#define cubeUV_v6 0.0038\n\t#define cubeUV_m6 4.0\n\tfloat roughnessToMip( float roughness ) {\n\t\tfloat mip = 0.0;\n\t\tif ( roughness >= cubeUV_r1 ) {\n\t\t\tmip = ( cubeUV_r0 - roughness ) * ( cubeUV_m1 - cubeUV_m0 ) / ( cubeUV_r0 - cubeUV_r1 ) + cubeUV_m0;\n\t\t} else if ( roughness >= cubeUV_r4 ) {\n\t\t\tmip = ( cubeUV_r1 - roughness ) * ( cubeUV_m4 - cubeUV_m1 ) / ( cubeUV_r1 - cubeUV_r4 ) + cubeUV_m1;\n\t\t} else if ( roughness >= cubeUV_r5 ) {\n\t\t\tmip = ( cubeUV_r4 - roughness ) * ( cubeUV_m5 - cubeUV_m4 ) / ( cubeUV_r4 - cubeUV_r5 ) + cubeUV_m4;\n\t\t} else if ( roughness >= cubeUV_r6 ) {\n\t\t\tmip = ( cubeUV_r5 - roughness ) * ( cubeUV_m6 - cubeUV_m5 ) / ( cubeUV_r5 - cubeUV_r6 ) + cubeUV_m5;\n\t\t} else {\n\t\t\tmip = - 2.0 * log2( 1.16 * roughness );\t\t}\n\t\treturn mip;\n\t}\n\tvec4 textureCubeUV( sampler2D envMap, vec3 sampleDir, float roughness ) {\n\t\tfloat mip = clamp( roughnessToMip( roughness ), cubeUV_m0, CUBEUV_MAX_MIP );\n\t\tfloat mipF = fract( mip );\n\t\tfloat mipInt = floor( mip );\n\t\tvec3 color0 = bilinearCubeUV( envMap, sampleDir, mipInt );\n\t\tif ( mipF == 0.0 ) {\n\t\t\treturn vec4( color0, 1.0 );\n\t\t} else {\n\t\t\tvec3 color1 = bilinearCubeUV( envMap, sampleDir, mipInt + 1.0 );\n\t\t\treturn vec4( mix( color0, color1, mipF ), 1.0 );\n\t\t}\n\t}\n#endif";
+var cube_uv_reflection_fragment = "#ifdef ENVMAP_TYPE_CUBE_UV\n\t#define cubeUV_minMipLevel 4.0\n\t#define cubeUV_minTileSize 16.0\n\tfloat getFace( vec3 direction ) {\n\t\tvec3 absDirection = abs( direction );\n\t\tfloat face = - 1.0;\n\t\tif ( absDirection.x > absDirection.z ) {\n\t\t\tif ( absDirection.x > absDirection.y )\n\t\t\t\tface = direction.x > 0.0 ? 0.0 : 3.0;\n\t\t\telse\n\t\t\t\tface = direction.y > 0.0 ? 1.0 : 4.0;\n\t\t} else {\n\t\t\tif ( absDirection.z > absDirection.y )\n\t\t\t\tface = direction.z > 0.0 ? 2.0 : 5.0;\n\t\t\telse\n\t\t\t\tface = direction.y > 0.0 ? 1.0 : 4.0;\n\t\t}\n\t\treturn face;\n\t}\n\tvec2 getUV( vec3 direction, float face ) {\n\t\tvec2 uv;\n\t\tif ( face == 0.0 ) {\n\t\t\tuv = vec2( direction.z, direction.y ) / abs( direction.x );\n\t\t} else if ( face == 1.0 ) {\n\t\t\tuv = vec2( - direction.x, - direction.z ) / abs( direction.y );\n\t\t} else if ( face == 2.0 ) {\n\t\t\tuv = vec2( - direction.x, direction.y ) / abs( direction.z );\n\t\t} else if ( face == 3.0 ) {\n\t\t\tuv = vec2( - direction.z, direction.y ) / abs( direction.x );\n\t\t} else if ( face == 4.0 ) {\n\t\t\tuv = vec2( - direction.x, direction.z ) / abs( direction.y );\n\t\t} else {\n\t\t\tuv = vec2( direction.x, direction.y ) / abs( direction.z );\n\t\t}\n\t\treturn 0.5 * ( uv + 1.0 );\n\t}\n\t#define cubeUV_r0 1.0\n\t#define cubeUV_v0 0.339\n\t#define cubeUV_m0 - 2.0\n\t#define cubeUV_r1 0.8\n\t#define cubeUV_v1 0.276\n\t#define cubeUV_m1 - 1.0\n\t#define cubeUV_r4 0.4\n\t#define cubeUV_v4 0.046\n\t#define cubeUV_m4 2.0\n\t#define cubeUV_r5 0.305\n\t#define cubeUV_v5 0.016\n\t#define cubeUV_m5 3.0\n\t#define cubeUV_r6 0.21\n\t#define cubeUV_v6 0.0038\n\t#define cubeUV_m6 4.0\n\tfloat roughnessToMip( float roughness ) {\n\t\tfloat mip = 0.0;\n\t\tif ( roughness >= cubeUV_r1 ) {\n\t\t\tmip = ( cubeUV_r0 - roughness ) * ( cubeUV_m1 - cubeUV_m0 ) / ( cubeUV_r0 - cubeUV_r1 ) + cubeUV_m0;\n\t\t} else if ( roughness >= cubeUV_r4 ) {\n\t\t\tmip = ( cubeUV_r1 - roughness ) * ( cubeUV_m4 - cubeUV_m1 ) / ( cubeUV_r1 - cubeUV_r4 ) + cubeUV_m1;\n\t\t} else if ( roughness >= cubeUV_r5 ) {\n\t\t\tmip = ( cubeUV_r4 - roughness ) * ( cubeUV_m5 - cubeUV_m4 ) / ( cubeUV_r4 - cubeUV_r5 ) + cubeUV_m4;\n\t\t} else if ( roughness >= cubeUV_r6 ) {\n\t\t\tmip = ( cubeUV_r5 - roughness ) * ( cubeUV_m6 - cubeUV_m5 ) / ( cubeUV_r5 - cubeUV_r6 ) + cubeUV_m5;\n\t\t} else {\n\t\t\tmip = - 2.0 * log2( 1.16 * roughness );\t\t}\n\t\treturn mip;\n\t}\n\t#if defined( CUBEUV_2D_SAMPLER_ARRAY )\n\t\tvec3 bilinearCubeUVArray( mediump sampler2DArray envMapArr, float envMapIdx, vec3 sampleParams, vec3 direction, float mipInt ) {\n\t\t\tfloat face = getFace( direction );\n\t\t\tfloat filterInt = max( cubeUV_minMipLevel - mipInt, 0.0 );\n\t\t\tmipInt = max( mipInt, cubeUV_minMipLevel );\n\t\t\tfloat faceSize = exp2( mipInt );\n\t\t\tvec2 uv = getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0;\n\t\t\tif ( face > 2.0 ) {\n\t\t\t\tuv.y += faceSize;\n\t\t\t\tface -= 3.0;\n\t\t\t}\n\t\t\tuv.x += face * faceSize;\n\t\t\tuv.x += filterInt * 3.0 * cubeUV_minTileSize;\n\t\t\tuv.y += 4.0 * ( exp2( sampleParams.x ) - faceSize );\n\t\t\tuv.x *= sampleParams.y;\n\t\t\tuv.y *= sampleParams.z;\n\t\t\treturn texture2D( envMapArr, vec3(uv, envMapIdx) ).rgb;\n\t\t}\n\t\tvec4 textureCubeUVArray( mediump sampler2DArray envMapArr, float envMapIdx, vec3 sampleParams, vec3 sampleDir, float roughness ) {\n\t\t\tfloat mip = clamp( roughnessToMip( roughness ), cubeUV_m0, sampleParams.x );\n\t\t\tfloat mipF = fract( mip );\n\t\t\tfloat mipInt = floor( mip );\n\t\t\tvec3 color0 = bilinearCubeUVArray( envMapArr, envMapIdx, sampleParams, sampleDir, mipInt );\n\t\t\tif ( mipF == 0.0 ) {\n\t\t\t\treturn vec4( color0, 1.0 );\n\t\t\t} else {\n\t\t\t\tvec3 color1 = bilinearCubeUVArray( envMapArr, envMapIdx, sampleParams, sampleDir, mipInt + 1.0 );\n\t\t\t\treturn vec4( mix( color0, color1, mipF ), 1.0 );\n\t\t\t}\n\t\t}\n\t#else\n\t\tvec3 bilinearCubeUV( sampler2D envMap, vec3 direction, float mipInt ) {\n\t\t\tfloat face = getFace( direction );\n\t\t\tfloat filterInt = max( cubeUV_minMipLevel - mipInt, 0.0 );\n\t\t\tmipInt = max( mipInt, cubeUV_minMipLevel );\n\t\t\tfloat faceSize = exp2( mipInt );\n\t\t\tvec2 uv = getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0;\n\t\t\tif ( face > 2.0 ) {\n\t\t\t\tuv.y += faceSize;\n\t\t\t\tface -= 3.0;\n\t\t\t}\n\t\t\tuv.x += face * faceSize;\n\t\t\tuv.x += filterInt * 3.0 * cubeUV_minTileSize;\n\t\t\tuv.y += 4.0 * ( exp2( CUBEUV_MAX_MIP ) - faceSize );\n\t\t\tuv.x *= CUBEUV_TEXEL_WIDTH;\n\t\t\tuv.y *= CUBEUV_TEXEL_HEIGHT;\n\t\t\t#ifdef texture2DGradEXT\n\t\t\t\treturn texture2DGradEXT( envMap, uv, vec2( 0.0 ), vec2( 0.0 ) ).rgb;\n\t\t\t#else\n\t\t\t\treturn texture2D( envMap, uv ).rgb;\n\t\t\t#endif\n\t\t}\n\t\tvec4 textureCubeUV( sampler2D envMap, vec3 sampleDir, float roughness ) {\n\t\t\tfloat mip = clamp( roughnessToMip( roughness ), cubeUV_m0, CUBEUV_MAX_MIP );\n\t\t\tfloat mipF = fract( mip );\n\t\t\tfloat mipInt = floor( mip );\n\t\t\tvec3 color0 = bilinearCubeUV( envMap, sampleDir, mipInt );\n\t\t\tif ( mipF == 0.0 ) {\n\t\t\t\treturn vec4( color0, 1.0 );\n\t\t\t} else {\n\t\t\t\tvec3 color1 = bilinearCubeUV( envMap, sampleDir, mipInt + 1.0 );\n\t\t\t\treturn vec4( mix( color0, color1, mipF ), 1.0 );\n\t\t\t}\n\t\t}\n\t#endif\n#endif";
 
 var defaultnormal_vertex = "vec3 transformedNormal = objectNormal;\n#ifdef USE_INSTANCING\n\tmat3 m = mat3( instanceMatrix );\n\ttransformedNormal /= vec3( dot( m[ 0 ], m[ 0 ] ), dot( m[ 1 ], m[ 1 ] ), dot( m[ 2 ], m[ 2 ] ) );\n\ttransformedNormal = m * transformedNormal;\n#endif\ntransformedNormal = normalMatrix * transformedNormal;\n#ifdef FLIP_SIDED\n\ttransformedNormal = - transformedNormal;\n#endif\n#ifdef USE_TANGENT\n\tvec3 transformedTangent = ( modelViewMatrix * vec4( objectTangent, 0.0 ) ).xyz;\n\t#ifdef FLIP_SIDED\n\t\ttransformedTangent = - transformedTangent;\n\t#endif\n#endif";
 
@@ -15351,8 +15351,6 @@ class PMREMGenerator {
 		this._cubemapMaterial = null;
 		this._equirectMaterial = null;
 
-		this._compileMaterial( this._blurMaterial );
-
 	}
 
 	/**
@@ -15375,7 +15373,7 @@ class PMREMGenerator {
 
 		if ( sigma > 0 ) {
 
-			this._blur( cubeUVRenderTarget, 0, 0, sigma );
+			this._blur( cubeUVRenderTarget, undefined, 0, 0, sigma );
 
 		}
 
@@ -15394,6 +15392,12 @@ class PMREMGenerator {
 	fromEquirectangular( equirectangular, renderTarget = null ) {
 
 		return this._fromTexture( equirectangular, renderTarget );
+
+	}
+
+	fromEquirectangularArray( equirectangularTextures ) {
+
+		return this._fromTextures( equirectangularTextures );
 
 	}
 
@@ -15506,22 +15510,46 @@ class PMREMGenerator {
 
 	}
 
-	_allocateTargets() {
+	_fromTextures( textures ) {
+
+		this._setSize( textures[ 0 ].image.width / 4 );
+
+		_oldTarget = this._renderer.getRenderTarget();
+
+		const cubeUVRenderTarget = this._allocateTargets( textures.length );
+
+		for ( let i = 0; i < textures.length; i ++ ) {
+
+			const texture = textures[ i ];
+
+			if (
+				! (
+					texture.mapping === EquirectangularReflectionMapping ||
+					texture.mapping === EquirectangularRefractionMapping
+				)
+			) {
+
+				console.warn( 'THREE.PMREMGenerator texture array must be created from equirectangular cubemaps' );
+
+			}
+
+			this._textureToCubeUV( texture, cubeUVRenderTarget, i );
+			this._applyPMREM( cubeUVRenderTarget, i );
+
+		}
+
+		this._cleanup( cubeUVRenderTarget );
+
+		return cubeUVRenderTarget;
+
+	}
+
+	_allocateTargets( depth = 0 ) {
 
 		const width = 3 * Math.max( this._cubeSize, 16 * 7 );
 		const height = 4 * this._cubeSize;
 
-		const params = {
-			magFilter: LinearFilter,
-			minFilter: LinearFilter,
-			generateMipmaps: false,
-			type: HalfFloatType,
-			format: RGBAFormat,
-			encoding: LinearEncoding,
-			depthBuffer: false
-		};
-
-		const cubeUVRenderTarget = _createRenderTarget( width, height, params );
+		const cubeUVRenderTarget = _createRenderTarget( width, height, depth );
 
 		if ( this._pingPongRenderTarget === null || this._pingPongRenderTarget.width !== width ) {
 
@@ -15531,12 +15559,12 @@ class PMREMGenerator {
 
 			}
 
-			this._pingPongRenderTarget = _createRenderTarget( width, height, params );
+			this._pingPongRenderTarget = _createRenderTarget( width, height, depth );
 
 			const { _lodMax } = this;
 			( { sizeLods: this._sizeLods, lodPlanes: this._lodPlanes, sigmas: this._sigmas } = _createPlanes( _lodMax ) );
 
-			this._blurMaterial = _getBlurShader( _lodMax, width, height );
+			this._blurMaterial = _getBlurShader( _lodMax, width, height, depth );
 
 		}
 
@@ -15642,7 +15670,7 @@ class PMREMGenerator {
 
 	}
 
-	_textureToCubeUV( texture, cubeUVRenderTarget ) {
+	_textureToCubeUV( texture, cubeUVRenderTarget, renderTargetIndex ) {
 
 		const renderer = this._renderer;
 
@@ -15679,12 +15707,12 @@ class PMREMGenerator {
 
 		_setViewport( cubeUVRenderTarget, 0, 0, 3 * size, 2 * size );
 
-		renderer.setRenderTarget( cubeUVRenderTarget );
+		renderer.setRenderTarget( cubeUVRenderTarget, renderTargetIndex );
 		renderer.render( mesh, _flatCamera );
 
 	}
 
-	_applyPMREM( cubeUVRenderTarget ) {
+	_applyPMREM( cubeUVRenderTarget, renderTargetIndex ) {
 
 		const renderer = this._renderer;
 		const autoClear = renderer.autoClear;
@@ -15696,7 +15724,7 @@ class PMREMGenerator {
 
 			const poleAxis = _axisDirections[ ( i - 1 ) % _axisDirections.length ];
 
-			this._blur( cubeUVRenderTarget, i - 1, i, sigma, poleAxis );
+			this._blur( cubeUVRenderTarget, renderTargetIndex, i - 1, i, sigma, poleAxis );
 
 		}
 
@@ -15711,13 +15739,15 @@ class PMREMGenerator {
 	 * the poles) to approximate the orthogonally-separable blur. It is least
 	 * accurate at the poles, but still does a decent job.
 	 */
-	_blur( cubeUVRenderTarget, lodIn, lodOut, sigma, poleAxis ) {
+	_blur( cubeUVRenderTarget, renderTargetIndex, lodIn, lodOut, sigma, poleAxis ) {
 
 		const pingPongRenderTarget = this._pingPongRenderTarget;
 
 		this._halfBlur(
 			cubeUVRenderTarget,
+			renderTargetIndex,
 			pingPongRenderTarget,
+			renderTargetIndex,
 			lodIn,
 			lodOut,
 			sigma,
@@ -15726,7 +15756,9 @@ class PMREMGenerator {
 
 		this._halfBlur(
 			pingPongRenderTarget,
+			renderTargetIndex,
 			cubeUVRenderTarget,
+			renderTargetIndex,
 			lodOut,
 			lodOut,
 			sigma,
@@ -15735,7 +15767,7 @@ class PMREMGenerator {
 
 	}
 
-	_halfBlur( targetIn, targetOut, lodIn, lodOut, sigmaRadians, direction, poleAxis ) {
+	_halfBlur( targetIn, inIndex, targetOut, outIndex, lodIn, lodOut, sigmaRadians, direction, poleAxis ) {
 
 		const renderer = this._renderer;
 		const blurMaterial = this._blurMaterial;
@@ -15794,6 +15826,7 @@ class PMREMGenerator {
 		}
 
 		blurUniforms[ 'envMap' ].value = targetIn.texture;
+		blurUniforms[ 'envMapIndex' ].value = inIndex;
 		blurUniforms[ 'samples' ].value = samples;
 		blurUniforms[ 'weights' ].value = weights;
 		blurUniforms[ 'latitudinal' ].value = direction === 'latitudinal';
@@ -15813,7 +15846,7 @@ class PMREMGenerator {
 		const y = 4 * ( this._cubeSize - outputSize );
 
 		_setViewport( targetOut, x, y, 3 * outputSize, 2 * outputSize );
-		renderer.setRenderTarget( targetOut );
+		renderer.setRenderTarget( targetOut, outIndex );
 		renderer.render( blurMesh, _flatCamera );
 
 	}
@@ -15902,12 +15935,30 @@ function _createPlanes( lodMax ) {
 
 }
 
-function _createRenderTarget( width, height, params ) {
+function _createRenderTarget( width, height, depth ) {
 
-	const cubeUVRenderTarget = new WebGLRenderTarget( width, height, params );
+	let cubeUVRenderTarget;
+
+	if ( depth ) {
+
+		cubeUVRenderTarget = new WebGLArrayRenderTarget( width, height, depth );
+
+	} else {
+
+		cubeUVRenderTarget = new WebGLRenderTarget( width, height );
+
+	}
+
 	cubeUVRenderTarget.texture.mapping = CubeUVReflectionMapping;
 	cubeUVRenderTarget.texture.name = 'PMREM.cubeUv';
+	cubeUVRenderTarget.texture.magFilter = LinearFilter;
+	cubeUVRenderTarget.texture.minFilter = LinearFilter;
+	cubeUVRenderTarget.texture.generateMipmaps = false;
+	cubeUVRenderTarget.texture.type = HalfFloatType;
+	cubeUVRenderTarget.texture.format = RGBAFormat;
+	cubeUVRenderTarget.texture.encoding = LinearEncoding;
 	cubeUVRenderTarget.scissorTest = true;
+	cubeUVRenderTarget.depthBuffer = false;
 	return cubeUVRenderTarget;
 
 }
@@ -15919,7 +15970,7 @@ function _setViewport( target, x, y, width, height ) {
 
 }
 
-function _getBlurShader( lodMax, width, height ) {
+function _getBlurShader( lodMax, width, height, depth ) {
 
 	const weights = new Float32Array( MAX_SAMPLES );
 	const poleAxis = new Vector3( 0, 1, 0 );
@@ -15932,10 +15983,12 @@ function _getBlurShader( lodMax, width, height ) {
 			'CUBEUV_TEXEL_WIDTH': 1.0 / width,
 			'CUBEUV_TEXEL_HEIGHT': 1.0 / height,
 			'CUBEUV_MAX_MIP': `${lodMax}.0`,
+			'CUBEUV_2D_SAMPLER_ARRAY': depth ? '' : undefined
 		},
 
 		uniforms: {
 			'envMap': { value: null },
+			'envMapIndex': { value: 0 },
 			'samples': { value: 1 },
 			'weights': { value: weights },
 			'latitudinal': { value: false },
@@ -15953,7 +16006,13 @@ function _getBlurShader( lodMax, width, height ) {
 
 			varying vec3 vOutputDirection;
 
+			#ifdef CUBEUV_2D_SAMPLER_ARRAY
+			uniform mediump sampler2DArray envMap;
+			#else
 			uniform sampler2D envMap;
+			#endif
+
+			uniform float envMapIndex;
 			uniform int samples;
 			uniform float weights[ n ];
 			uniform bool latitudinal;
@@ -15972,7 +16031,12 @@ function _getBlurShader( lodMax, width, height ) {
 					+ cross( axis, vOutputDirection ) * sin( theta )
 					+ axis * dot( axis, vOutputDirection ) * ( 1.0 - cosTheta );
 
-				return bilinearCubeUV( envMap, sampleDirection, mipInt );
+				#ifdef CUBEUV_2D_SAMPLER_ARRAY
+					vec3 sampleParams = vec3( CUBEUV_MAX_MIP, CUBEUV_TEXEL_WIDTH, CUBEUV_TEXEL_HEIGHT );
+					return bilinearCubeUVArray( envMap, envMapIndex, sampleParams, sampleDirection, mipInt );
+				#else
+					return bilinearCubeUV( envMap, sampleDirection, mipInt );
+				#endif
 
 			}
 
