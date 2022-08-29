@@ -773,7 +773,8 @@ function _getBlurShader( lodMax, width, height, depth ) {
 					+ axis * dot( axis, vOutputDirection ) * ( 1.0 - cosTheta );
 
 				#ifdef CUBEUV_2D_SAMPLER_ARRAY
-					return bilinearCubeUVArray( envMap, envMapIndex, sampleDirection, mipInt );
+					vec3 sampleParams = vec3( CUBEUV_MAX_MIP, CUBEUV_TEXEL_WIDTH, CUBEUV_TEXEL_HEIGHT );
+					return bilinearCubeUVArray( envMap, envMapIndex, sampleParams, sampleDirection, mipInt );
 				#else
 					return bilinearCubeUV( envMap, sampleDirection, mipInt );
 				#endif

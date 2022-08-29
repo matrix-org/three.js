@@ -75,80 +75,6 @@ export default /* glsl */`
 
 	}
 
-	vec3 bilinearCubeUV( sampler2D envMap, vec3 direction, float mipInt ) {
-
-		float face = getFace( direction );
-
-		float filterInt = max( cubeUV_minMipLevel - mipInt, 0.0 );
-
-		mipInt = max( mipInt, cubeUV_minMipLevel );
-
-		float faceSize = exp2( mipInt );
-
-		vec2 uv = getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0;
-
-		if ( face > 2.0 ) {
-
-			uv.y += faceSize;
-
-			face -= 3.0;
-
-		}
-
-		uv.x += face * faceSize;
-
-		uv.x += filterInt * 3.0 * cubeUV_minTileSize;
-
-		uv.y += 4.0 * ( exp2( CUBEUV_MAX_MIP ) - faceSize );
-
-		uv.x *= CUBEUV_TEXEL_WIDTH;
-		uv.y *= CUBEUV_TEXEL_HEIGHT;
-
-		#ifdef texture2DGradEXT
-
-			return texture2DGradEXT( envMap, uv, vec2( 0.0 ), vec2( 0.0 ) ).rgb; // disable anisotropic filtering
-
-		#else
-
-			return texture2D( envMap, uv ).rgb;
-
-		#endif
-
-	}
-
-	vec3 bilinearCubeUVArray( mediump sampler2DArray envMapArr, float envMapIdx, vec3 direction, float mipInt ) {
-
-		float face = getFace( direction );
-
-		float filterInt = max( cubeUV_minMipLevel - mipInt, 0.0 );
-
-		mipInt = max( mipInt, cubeUV_minMipLevel );
-
-		float faceSize = exp2( mipInt );
-
-		vec2 uv = getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0;
-
-		if ( face > 2.0 ) {
-
-			uv.y += faceSize;
-
-			face -= 3.0;
-
-		}
-
-		uv.x += face * faceSize;
-
-		uv.x += filterInt * 3.0 * cubeUV_minTileSize;
-
-		uv.y += 4.0 * ( exp2( CUBEUV_MAX_MIP ) - faceSize );
-
-		uv.x *= CUBEUV_TEXEL_WIDTH;
-		uv.y *= CUBEUV_TEXEL_HEIGHT;
-
-		return texture2D( envMapArr, vec3(uv, envMapIdx) ).rgb;
-
-	}
-
 	// These defines must match with PMREMGenerator
 
 	#define cubeUV_r0 1.0
@@ -196,53 +122,134 @@ export default /* glsl */`
 
 	}
 
-	vec4 textureCubeUV( sampler2D envMap, vec3 sampleDir, float roughness ) {
+	#if defined( CUBEUV_2D_SAMPLER_ARRAY )
 
-		float mip = clamp( roughnessToMip( roughness ), cubeUV_m0, CUBEUV_MAX_MIP );
+		vec3 bilinearCubeUVArray( mediump sampler2DArray envMapArr, float envMapIdx, vec3 sampleParams, vec3 direction, float mipInt ) {
 
-		float mipF = fract( mip );
+			float face = getFace( direction );
 
-		float mipInt = floor( mip );
+			float filterInt = max( cubeUV_minMipLevel - mipInt, 0.0 );
 
-		vec3 color0 = bilinearCubeUV( envMap, sampleDir, mipInt );
+			mipInt = max( mipInt, cubeUV_minMipLevel );
 
-		if ( mipF == 0.0 ) {
+			float faceSize = exp2( mipInt );
 
-			return vec4( color0, 1.0 );
+			vec2 uv = getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0;
 
-		} else {
+			if ( face > 2.0 ) {
 
-			vec3 color1 = bilinearCubeUV( envMap, sampleDir, mipInt + 1.0 );
+				uv.y += faceSize;
 
-			return vec4( mix( color0, color1, mipF ), 1.0 );
+				face -= 3.0;
 
-		}
+			}
 
-	}
+			uv.x += face * faceSize;
 
-	vec4 textureCubeUVArray( mediump sampler2DArray envMapArr, float envMapIdx, vec3 sampleDir, float roughness ) {
+			uv.x += filterInt * 3.0 * cubeUV_minTileSize;
 
-		float mip = clamp( roughnessToMip( roughness ), cubeUV_m0, CUBEUV_MAX_MIP );
+			uv.y += 4.0 * ( exp2( sampleParams.x ) - faceSize );
 
-		float mipF = fract( mip );
+			uv.x *= sampleParams.y;
+			uv.y *= sampleParams.z;
 
-		float mipInt = floor( mip );
-
-		vec3 color0 = bilinearCubeUVArray( envMapArr, envMapIdx, sampleDir, mipInt );
-
-		if ( mipF == 0.0 ) {
-
-			return vec4( color0, 1.0 );
-
-		} else {
-
-			vec3 color1 = bilinearCubeUVArray( envMapArr, envMapIdx, sampleDir, mipInt + 1.0 );
-
-			return vec4( mix( color0, color1, mipF ), 1.0 );
+			return texture2D( envMapArr, vec3(uv, envMapIdx) ).rgb;
 
 		}
 
-	}
+		// Note: sampleParams = vec3(CUBEUV_MAX_MIP, CUBEUV_TEXEL_WIDTH, CUBEUV_TEXEL_HEIGHT);
+		vec4 textureCubeUVArray( mediump sampler2DArray envMapArr, float envMapIdx, vec3 sampleParams, vec3 sampleDir, float roughness ) {
+
+			float mip = clamp( roughnessToMip( roughness ), cubeUV_m0, sampleParams.x );
+
+			float mipF = fract( mip );
+
+			float mipInt = floor( mip );
+
+			vec3 color0 = bilinearCubeUVArray( envMapArr, envMapIdx, sampleParams, sampleDir, mipInt );
+
+			if ( mipF == 0.0 ) {
+
+				return vec4( color0, 1.0 );
+
+			} else {
+
+				vec3 color1 = bilinearCubeUVArray( envMapArr, envMapIdx, sampleParams, sampleDir, mipInt + 1.0 );
+
+				return vec4( mix( color0, color1, mipF ), 1.0 );
+
+			}
+
+		}
+
+	#else
+
+		vec3 bilinearCubeUV( sampler2D envMap, vec3 direction, float mipInt ) {
+
+			float face = getFace( direction );
+
+			float filterInt = max( cubeUV_minMipLevel - mipInt, 0.0 );
+
+			mipInt = max( mipInt, cubeUV_minMipLevel );
+
+			float faceSize = exp2( mipInt );
+
+			vec2 uv = getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0;
+
+			if ( face > 2.0 ) {
+
+				uv.y += faceSize;
+
+				face -= 3.0;
+
+			}
+
+			uv.x += face * faceSize;
+
+			uv.x += filterInt * 3.0 * cubeUV_minTileSize;
+
+			uv.y += 4.0 * ( exp2( CUBEUV_MAX_MIP ) - faceSize );
+
+			uv.x *= CUBEUV_TEXEL_WIDTH;
+			uv.y *= CUBEUV_TEXEL_HEIGHT;
+
+			#ifdef texture2DGradEXT
+
+				return texture2DGradEXT( envMap, uv, vec2( 0.0 ), vec2( 0.0 ) ).rgb; // disable anisotropic filtering
+
+			#else
+
+				return texture2D( envMap, uv ).rgb;
+
+			#endif
+
+		}
+
+		vec4 textureCubeUV( sampler2D envMap, vec3 sampleDir, float roughness ) {
+
+			float mip = clamp( roughnessToMip( roughness ), cubeUV_m0, CUBEUV_MAX_MIP );
+
+			float mipF = fract( mip );
+
+			float mipInt = floor( mip );
+
+			vec3 color0 = bilinearCubeUV( envMap, sampleDir, mipInt );
+
+			if ( mipF == 0.0 ) {
+
+				return vec4( color0, 1.0 );
+
+			} else {
+
+				vec3 color1 = bilinearCubeUV( envMap, sampleDir, mipInt + 1.0 );
+
+				return vec4( mix( color0, color1, mipF ), 1.0 );
+
+			}
+
+		}
+
+	#endif
 
 #endif
 `;
