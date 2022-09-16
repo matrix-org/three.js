@@ -21182,12 +21182,6 @@ function WebGLState( gl, extensions, capabilities ) {
 
 							gl.depthFunc( 515 );
 
-						}
-
-					} else {
-
-						gl.depthFunc( 515 );
-
 					}
 
 					currentDepthFunc = depthFunc;

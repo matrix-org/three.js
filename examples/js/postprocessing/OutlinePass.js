@@ -359,6 +359,9 @@
 		getPrepareMaskMaterial() {
 
 			return new THREE.ShaderMaterial( {
+				defines: {
+					USE_ENVMAP: ''
+				},
 				uniforms: {
 					'depthTexture': {
 						value: null
