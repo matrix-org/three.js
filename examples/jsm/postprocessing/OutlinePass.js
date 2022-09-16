@@ -423,6 +423,10 @@ class OutlinePass extends Pass {
 
 		return new ShaderMaterial( {
 
+			defines: {
+				USE_ENVMAP: '',
+			},
+
 			uniforms: {
 				'depthTexture': { value: null },
 				'cameraNearFar': { value: new Vector2( 0.5, 0.5 ) },
