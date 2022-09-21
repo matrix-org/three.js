@@ -35,9 +35,6 @@ export default class MeshStandardNodeMaterial extends NodeMaterial {
 		this.metalnessNode = null;
 		this.roughnessNode = null;
 
-		this.clearcoatNode = null;
-		this.clearcoatRoughnessNode = null;
-
 		this.envNode = null;
 
 		this.lightsNode = null;
@@ -54,7 +51,10 @@ export default class MeshStandardNodeMaterial extends NodeMaterial {
 
 		this.generatePosition( builder );
 
-		let { colorNode, diffuseColorNode } = this.generateDiffuseColor( builder );
+		const colorNodes = this.generateDiffuseColor( builder );
+		const { colorNode } = colorNodes;
+		let { diffuseColorNode } = colorNodes;
+
 		const envNode = this.envNode || builder.scene.environmentNode;
 
 		diffuseColorNode = this.generateStandardMaterial( builder, { colorNode, diffuseColorNode } );
@@ -154,9 +154,6 @@ export default class MeshStandardNodeMaterial extends NodeMaterial {
 
 		this.metalnessNode = source.metalnessNode;
 		this.roughnessNode = source.roughnessNode;
-
-		this.clearcoatNode = source.clearcoatNode;
-		this.clearcoatRoughnessNode = source.clearcoatRoughnessNode;
 
 		this.envNode = source.envNode;
 

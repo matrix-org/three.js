@@ -1,5 +1,5 @@
 import { NodeUpdateType } from './constants.js';
-import { getNodesKeys } from './NodeUtils.js';
+import { getNodesKeys, getCacheKey } from './NodeUtils.js';
 import { MathUtils } from 'three';
 
 let _nodeId = 0;
@@ -55,6 +55,12 @@ class Node {
 		}
 
 		return children;
+
+	}
+
+	getCacheKey() {
+
+		return getCacheKey( this );
 
 	}
 
@@ -131,15 +137,13 @@ class Node {
 
 	}
 
-	generate( builder ) {
+	generate( builder, output ) {
 
 		const { outputNode } = builder.getNodeProperties( this );
 
 		if ( outputNode?.isNode === true ) {
 
-			const type = this.getNodeType( builder );
-
-			return outputNode.build( builder, type );
+			return outputNode.build( builder, output );
 
 		}
 
@@ -167,7 +171,7 @@ class Node {
 		/* expected return:
 			- "construct"	-> Node
 			- "analyze"		-> null
-			- "generat"		-> String
+			- "generate"	-> String
 		*/
 		let result = null;
 
@@ -176,13 +180,11 @@ class Node {
 		if ( buildStage === 'construct' ) {
 
 			const properties = builder.getNodeProperties( this );
-			const nodeData = builder.getDataFromNode( this );
 
-			if ( properties.initied !== true ) {
+			if ( properties.initialized !== true || builder.context.tempRead === false ) {
 
-				nodeData.initied = true;
-
-				properties.outputNode =  this.construct( builder );
+				properties.initialized = true;
+				properties.outputNode = this.construct( builder );
 
 				for ( const childNode of Object.values( properties ) ) {
 
@@ -211,7 +213,7 @@ class Node {
 
 				result = nodeData.snippet;
 
-				if ( result === undefined ) {
+				if ( result === undefined /*|| builder.context.tempRead === false*/ ) {
 
 					result = this.generate( builder ) || '';
 
