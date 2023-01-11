@@ -319,7 +319,7 @@ function WebGLRenderer( parameters = {} ) {
 		renderLists = new WebGLRenderLists();
 		renderStates = new WebGLRenderStates( extensions, capabilities );
 		background = new WebGLBackground( _this, cubemaps, cubeuvmaps, state, objects, _alpha, _premultipliedAlpha );
-    multiview = new WebGLMultiview( _this, extensions, _gl );
+		multiview = new WebGLMultiview( _this, extensions, _gl );
 		shadowMap = new WebGLShadowMap( _this, objects, capabilities );
 		uniformsGroups = new WebGLUniformsGroups( _gl, info, capabilities, state );
 
