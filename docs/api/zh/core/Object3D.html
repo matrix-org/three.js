@@ -263,6 +263,13 @@
 		从该对象开始，搜索一个对象及其子级，返回第一个给定的属性中包含有匹配的值的子对象。
 	</p>
 
+	<h3>[method:Object3D getObjectsByProperty]( [param:String name], [param:Any value] )</h3>
+	<p>
+		name —— 将要用于查找的属性的名称。<br />
+		value —— 给定的属性的值。 <br /><br />
+		从此对象开始，搜索一个对象及其子对象，返回包含给定属性的匹配值的所有子对象。
+	</p>
+
 	<h3>[method:Vector3 getWorldPosition]( [param:Vector3 target] )</h3>
 	<p>
 		[page:Vector3 target] — 结果将被复制到这个Vector3中。<br /><br />
@@ -304,7 +311,7 @@
 		这一方法不支持其父级被旋转过或者被位移过的物体。
 	</p>
 
-	<h3>[method:Array raycast]( [param:Raycaster raycaster], [param:Array intersects] )</h3>
+	<h3>[method:undefined raycast]( [param:Raycaster raycaster], [param:Array intersects] )</h3>
 	<p>抽象（空方法），在一条被投射出的射线与这个物体之间获得交点。
 		在一些子类，例如[page:Mesh], [page:Line], and [page:Points]实现了这个方法，以用于光线投射。
 	</p>

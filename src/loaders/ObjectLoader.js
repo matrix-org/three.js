@@ -101,6 +101,8 @@ class ObjectLoader extends Loader {
 
 			if ( metadata === undefined || metadata.type === undefined || metadata.type.toLowerCase() === 'geometry' ) {
 
+				if ( onError !== undefined ) onError( new Error( 'THREE.ObjectLoader: Can\'t load ' + url ) );
+
 				console.error( 'THREE.ObjectLoader: Can\'t load ' + url );
 				return;
 
@@ -659,6 +661,7 @@ class ObjectLoader extends Loader {
 
 				if ( data.flipY !== undefined ) texture.flipY = data.flipY;
 
+				if ( data.generateMipmaps !== undefined ) texture.generateMipmaps = data.generateMipmaps;
 				if ( data.premultiplyAlpha !== undefined ) texture.premultiplyAlpha = data.premultiplyAlpha;
 				if ( data.unpackAlignment !== undefined ) texture.unpackAlignment = data.unpackAlignment;
 
@@ -779,6 +782,9 @@ class ObjectLoader extends Loader {
 					}
 
 				}
+
+				if ( data.backgroundBlurriness !== undefined ) object.backgroundBlurriness = data.backgroundBlurriness;
+				if ( data.backgroundIntensity !== undefined ) object.backgroundIntensity = data.backgroundIntensity;
 
 				break;
 
@@ -1014,7 +1020,7 @@ class ObjectLoader extends Loader {
 
 				if ( child !== undefined ) {
 
-					object.addLevel( child, level.distance );
+					object.addLevel( child, level.distance, level.hysteresis );
 
 				}
 

@@ -292,7 +292,7 @@ function Viewport( editor ) {
 		signals.refreshSidebarObject3D.dispatch( camera );
 
 	} );
-	viewHelper.controls = controls;
+	viewHelper.center = controls.center;
 
 	// signals
 
@@ -481,7 +481,7 @@ function Viewport( editor ) {
 
 	// background
 
-	signals.sceneBackgroundChanged.add( function ( backgroundType, backgroundColor, backgroundTexture, backgroundEquirectangularTexture ) {
+	signals.sceneBackgroundChanged.add( function ( backgroundType, backgroundColor, backgroundTexture, backgroundEquirectangularTexture, backgroundBlurriness, backgroundIntensity ) {
 
 		switch ( backgroundType ) {
 
@@ -513,6 +513,8 @@ function Viewport( editor ) {
 
 					backgroundEquirectangularTexture.mapping = THREE.EquirectangularReflectionMapping;
 					scene.background = backgroundEquirectangularTexture;
+					scene.backgroundBlurriness = backgroundBlurriness;
+					scene.backgroundIntensity = backgroundIntensity;
 
 				}
 

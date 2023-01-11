@@ -35,6 +35,7 @@ const exceptionList = [
 	'webgl_nodes_materials_standard', // puppeteer does not support import maps yet
 	'webgl_postprocessing_crossfade', // fails for some misterious reason
 	'webgl_raymarching_reflect', // exception for Github Actions
+	'webgl_renderer_pathtracer', // slow to render
 	'webgl_test_memory2', // gives fatal error in puppeteer
 	'webgl_tiled_forward', // exception for Github Actions
 	'webgl_video_kinect', // video tag not deterministic enough
@@ -43,13 +44,17 @@ const exceptionList = [
 	// webxr
 	'webxr_ar_lighting',
 	// webgpu
+	'webgpu_audio_processing',
 	'webgpu_compute',
 	'webgpu_cubemap_adjustments',
 	'webgpu_cubemap_mix',
 	'webgpu_depth_texture',
+	'webgpu_equirectangular',
 	'webgpu_instance_mesh',
 	'webgpu_instance_uniform',
 	'webgpu_lights_custom',
+	'webgpu_lights_ies_spotlight',
+	'webgpu_lights_phong',
 	'webgpu_lights_selective',
 	'webgpu_loader_gltf',
 	'webgpu_materials',
@@ -57,9 +62,9 @@ const exceptionList = [
 	'webgpu_particles',
 	'webgpu_rtt',
 	'webgpu_sandbox',
+	'webgpu_skinning',
 	'webgpu_skinning_instancing',
 	'webgpu_skinning_points',
-	'webgpu_skinning',
 	'webgpu_sprites'
 ].concat( ( process.platform === 'win32' ) ? [
 

@@ -266,6 +266,14 @@
 		객체 자신부터 시작하여 객체와 객체 자식 항목을 검색하고 일치하는 값의 첫 번째 항목을 리턴합니다.
 		</p>
 
+		<h3>[method:Object3D getObjectsByProperty]( [param:String name], [param:Any value] )</h3>
+		<p>
+		name -- 검색하고자하는 이름 프로퍼티. <br />
+		value -- 프로퍼티의 값. <br /><br />
+
+		개체 자체부터 시작하여 개체와 해당 자식을 검색하고 일치하는 값의 모든 개체를 반환합니다.
+		</p>
+
 		<h3>[method:Vector3 getWorldPosition]( [param:Vector3 target] )</h3>
 		<p>
 		[page:Vector3 target] — 결과값은 이 Vector3에 복제됩니다. <br /><br />
@@ -313,7 +321,7 @@
 		이 메서드는 비균일 스케일 부모를 가진 객체들은 지원하지 않습니다.
 		</p>
 
-		<h3>[method:Array raycast]( [param:Raycaster raycaster], [param:Array intersects] )</h3>
+		<h3>[method:undefined raycast]( [param:Raycaster raycaster], [param:Array intersects] )</h3>
 		<p>
 		객체와 레이캐스팅 사이의 인터섹션을 구하는 추상 (빈) 메서드입니다.
 		Subclasses such as [page:Mesh], [page:Line], 및 [page:Points] 같은 서브클래스들은 레이캐스팅을 사용하는 순서에 따라 이 메서드를 실행합니다.

@@ -7,17 +7,17 @@ import OperatorNode from '../math/OperatorNode.js';
 
 class PositionNode extends Node {
 
-	static GEOMETRY = 'geometry';
-	static LOCAL = 'local';
-	static WORLD = 'world';
-	static VIEW = 'view';
-	static VIEW_DIRECTION = 'viewDirection';
-
 	constructor( scope = PositionNode.LOCAL ) {
 
 		super( 'vec3' );
 
 		this.scope = scope;
+
+	}
+
+	isGlobal() {
+
+		return true;
 
 	}
 
@@ -56,6 +56,11 @@ class PositionNode extends Node {
 			const vertexPositionNode = new MathNode( MathNode.NEGATE, new PositionNode( PositionNode.VIEW ) );
 			outputNode = new MathNode( MathNode.NORMALIZE, new VaryingNode( vertexPositionNode ) );
 
+		} else if ( scope === PositionNode.WORLD_DIRECTION ) {
+
+			const vertexPositionNode = new MathNode( MathNode.NEGATE, new PositionNode( PositionNode.WORLD ) );
+			outputNode = new MathNode( MathNode.NORMALIZE, new VaryingNode( vertexPositionNode ) );
+
 		}
 
 		return outputNode.build( builder, this.getNodeType( builder ) );
@@ -79,5 +84,12 @@ class PositionNode extends Node {
 	}
 
 }
+
+PositionNode.GEOMETRY = 'geometry';
+PositionNode.LOCAL = 'local';
+PositionNode.WORLD = 'world';
+PositionNode.WORLD_DIRECTION = 'worldDirection';
+PositionNode.VIEW = 'view';
+PositionNode.VIEW_DIRECTION = 'viewDirection';
 
 export default PositionNode;
