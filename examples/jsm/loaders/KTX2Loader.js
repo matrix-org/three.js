@@ -236,13 +236,17 @@ class KTX2Loader extends Loader {
 
 	}
 
-	_createTextureFrom( transcodeResult ) {
+	_loadTextureFromTranscodeResult( transcodeResult, texture ) {
 
 		const { mipmaps, width, height, format, type, error, dfdTransferFn, dfdFlags } = transcodeResult;
 
-		if ( type === 'error' ) return Promise.reject( error );
+		if ( type === 'error' ) throw new Error( error );
 
-		const texture = new CompressedTexture( mipmaps, width, height, format, UnsignedByteType );
+		texture.mipmaps = mipmaps;
+		texture.image.width = width;
+		texture.image.height = height;
+		texture.format = format;
+		texture.type = UnsignedByteType;
 		texture.minFilter = mipmaps.length === 1 ? LinearFilter : LinearMipmapLinearFilter;
 		texture.magFilter = LinearFilter;
 		texture.generateMipmaps = false;
@@ -254,6 +258,24 @@ class KTX2Loader extends Loader {
 
 	}
 
+	_loadTextureFromKTX2Container( container, texture ) {
+
+		return loadDataTexture( container, texture );
+
+	}
+
+	_readKTX2Container( buffer ) {
+
+		return read( new Uint8Array( buffer ) );
+
+	}
+
+	_transcodeTexture( buffer, config = {} ) {
+
+		return this.workerPool.postMessage( { type: 'transcode', buffer, taskConfig: config }, [ buffer ] );
+
+	}
+
 	/**
 	 * @param {ArrayBuffer} buffer
 	 * @param {object?} config
@@ -261,11 +283,13 @@ class KTX2Loader extends Loader {
 	 */
 	_createTexture( buffer, config = {} ) {
 
-		const container = read( new Uint8Array( buffer ) );
+		const container = this._readKTX2Container( buffer );
 
 		if ( container.vkFormat !== VK_FORMAT_UNDEFINED ) {
 
-			return createDataTexture( container );
+			const texture = container.pixelDepth === 0 ? new DataTexture() : new Data3DTexture();
+
+			return this._loadTextureFromKTX2Container( container, texture );
 
 		}
 
@@ -274,9 +298,9 @@ class KTX2Loader extends Loader {
 		const taskConfig = config;
 		const texturePending = this.init().then( () => {
 
-			return this.workerPool.postMessage( { type: 'transcode', buffer, taskConfig: taskConfig }, [ buffer ] );
+			return this._transcodeTexture( buffer, taskConfig );
 
-		} ).then( ( e ) => this._createTextureFrom( e.data ) );
+		} ).then( ( e ) => this._createTextureFromTranscodeResult( e.data ) );
 
 		// Cache the task result.
 		_taskCache.set( buffer, { promise: texturePending } );
@@ -663,7 +687,7 @@ const ENCODING_MAP = {
 
 };
 
-async function createDataTexture( container ) {
+async function loadDataTexture( container, texture ) {
 
 	const { vkFormat, pixelWidth, pixelHeight, pixelDepth } = container;
 
@@ -734,9 +758,15 @@ async function createDataTexture( container ) {
 
 	//
 
-	const texture = pixelDepth === 0
-		? new DataTexture( view, pixelWidth, pixelHeight )
-		: new Data3DTexture( view, pixelWidth, pixelHeight, pixelDepth );
+	texture.image.width = pixelWidth;
+	texture.image.height = pixelHeight;
+	texture.image.data = view;
+
+	if ( pixelDepth > 0 ) {
+
+		texture.image.depth = pixelDepth;
+
+	}
 
 	texture.type = TYPE_MAP[ vkFormat ];
 	texture.format = FORMAT_MAP[ vkFormat ];
