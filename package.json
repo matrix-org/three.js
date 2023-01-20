@@ -1,6 +1,6 @@
 {
   "name": "@thirdroom/three",
-  "version": "0.148.0",
+  "version": "0.148.1",
   "description": "JavaScript 3D library",
   "type": "module",
   "main": "./build/three.js",
@@ -8,7 +8,7 @@
   "exports": {
     ".": {
       "import": "./build/three.module.js",
-      "require": "./build/three.cjs"
+      "require": "./build/three.cjs"   
     },
     "./examples/fonts/*": "./examples/fonts/*",
     "./examples/jsm/*": "./examples/jsm/*",
