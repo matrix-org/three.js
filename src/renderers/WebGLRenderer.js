@@ -1,7 +1,7 @@
 import {
 	REVISION,
 	BackSide,
-	DoubleSide,
+	TwoPassDoubleSide,
 	FrontSide,
 	RGBAFormat,
 	HalfFloatType,
@@ -133,28 +133,6 @@ function WebGLRenderer( parameters = {} ) {
 
 	this.toneMapping = NoToneMapping;
 	this.toneMappingExposure = 1.0;
-
-	//
-
-	Object.defineProperties( this, {
-
-		// @deprecated since r136, 0e21088102b4de7e0a0a33140620b7a3424b9e6d
-
-		gammaFactor: {
-			get: function () {
-
-				console.warn( 'THREE.WebGLRenderer: .gammaFactor has been removed.' );
-				return 2;
-
-			},
-			set: function () {
-
-				console.warn( 'THREE.WebGLRenderer: .gammaFactor has been removed.' );
-
-			}
-		}
-
-	} );
 
 	// internal properties
 
@@ -337,7 +315,7 @@ function WebGLRenderer( parameters = {} ) {
 		materials = new WebGLMaterials( _this, properties );
 		renderLists = new WebGLRenderLists();
 		renderStates = new WebGLRenderStates( extensions, capabilities );
-		background = new WebGLBackground( _this, cubemaps, state, objects, _alpha, _premultipliedAlpha );
+		background = new WebGLBackground( _this, cubemaps, cubeuvmaps, state, objects, _alpha, _premultipliedAlpha );
 		shadowMap = new WebGLShadowMap( _this, objects, capabilities );
 		uniformsGroups = new WebGLUniformsGroups( _gl, info, capabilities, state );
 
@@ -722,22 +700,6 @@ function WebGLRenderer( parameters = {} ) {
 		//
 
 		let index = geometry.index;
-		const position = geometry.attributes.position;
-
-		//
-
-		if ( index === null ) {
-
-			if ( position === undefined || position.count === 0 ) return;
-
-		} else if ( index.count === 0 ) {
-
-			return;
-
-		}
-
-		//
-
 		let rangeFactor = 1;
 
 		if ( material.wireframe === true ) {
@@ -746,6 +708,39 @@ function WebGLRenderer( parameters = {} ) {
 			rangeFactor = 2;
 
 		}
+
+		//
+
+		const drawRange = geometry.drawRange;
+		const position = geometry.attributes.position;
+
+		let drawStart = drawRange.start * rangeFactor;
+		let drawEnd = ( drawRange.start + drawRange.count ) * rangeFactor;
+
+		if ( group !== null ) {
+
+			drawStart = Math.max( drawStart, group.start * rangeFactor );
+			drawEnd = Math.min( drawEnd, ( group.start + group.count ) * rangeFactor );
+
+		}
+
+		if ( index !== null ) {
+
+			drawStart = Math.max( drawStart, 0 );
+			drawEnd = Math.min( drawEnd, index.count );
+
+		} else if ( position !== undefined && position !== null ) {
+
+			drawStart = Math.max( drawStart, 0 );
+			drawEnd = Math.min( drawEnd, position.count );
+
+		}
+
+		const drawCount = drawEnd - drawStart;
+
+		if ( drawCount < 0 || drawCount === Infinity ) return;
+
+		//
 
 		bindingStates.setup( object, material, program, geometry, index );
 
@@ -760,23 +755,6 @@ function WebGLRenderer( parameters = {} ) {
 			renderer.setIndex( attribute );
 
 		}
-
-		//
-
-		const dataCount = ( index !== null ) ? index.count : position.count;
-
-		const rangeStart = geometry.drawRange.start * rangeFactor;
-		const rangeCount = geometry.drawRange.count * rangeFactor;
-
-		const groupStart = group !== null ? group.start * rangeFactor : 0;
-		const groupCount = group !== null ? group.count * rangeFactor : Infinity;
-
-		const drawStart = Math.max( rangeStart, groupStart );
-		const drawEnd = Math.min( dataCount, rangeStart + rangeCount, groupStart + groupCount ) - 1;
-
-		const drawCount = Math.max( 0, drawEnd - drawStart + 1 );
-
-		if ( drawCount === 0 ) return;
 
 		//
 
@@ -831,7 +809,8 @@ function WebGLRenderer( parameters = {} ) {
 
 		} else if ( geometry.isInstancedBufferGeometry ) {
 
-			const instanceCount = Math.min( geometry.instanceCount, geometry._maxInstanceCount );
+			const maxInstanceCount = geometry._maxInstanceCount !== undefined ? geometry._maxInstanceCount : Infinity;
+			const instanceCount = Math.min( geometry.instanceCount, maxInstanceCount );
 
 			renderer.renderInstances( drawStart, drawCount, instanceCount );
 
@@ -849,7 +828,7 @@ function WebGLRenderer( parameters = {} ) {
 
 		function prepare( material, scene, object ) {
 
-			if ( material.transparent === true && material.side === DoubleSide ) {
+			if ( material.transparent === true && material.side === TwoPassDoubleSide ) {
 
 				material.side = BackSide;
 				material.needsUpdate = true;
@@ -859,7 +838,7 @@ function WebGLRenderer( parameters = {} ) {
 				material.needsUpdate = true;
 				getProgram( material, scene, object );
 
-				material.side = DoubleSide;
+				material.side = TwoPassDoubleSide;
 
 			} else {
 
@@ -1331,7 +1310,7 @@ function WebGLRenderer( parameters = {} ) {
 
 		material.onBeforeRender( _this, scene, camera, geometry, object, group );
 
-		if ( material.transparent === true && material.side === DoubleSide ) {
+		if ( material.transparent === true && material.side === TwoPassDoubleSide ) {
 
 			material.side = BackSide;
 			material.needsUpdate = true;
@@ -1341,7 +1320,7 @@ function WebGLRenderer( parameters = {} ) {
 			material.needsUpdate = true;
 			_this.renderBufferDirect( camera, scene, geometry, material, object, group );
 
-			material.side = DoubleSide;
+			material.side = TwoPassDoubleSide;
 
 		} else {
 
@@ -1928,6 +1907,9 @@ function WebGLRenderer( parameters = {} ) {
 		_currentActiveMipmapLevel = activeMipmapLevel;
 
 		let useDefaultFramebuffer = true;
+		let framebuffer = null;
+		let isCube = false;
+		let isRenderTarget3D = false;
 
 		if ( renderTarget ) {
 
@@ -1950,17 +1932,9 @@ function WebGLRenderer( parameters = {} ) {
 
 			}
 
-		}
-
-		let framebuffer = null;
-		let isCube = false;
-		let isRenderTarget3D = false;
-
-		if ( renderTarget ) {
-
 			const texture = renderTarget.texture;
 
-			if ( texture.isData3DTexture || texture.isDataArrayTexture ) {
+			if ( texture.isData3DTexture || texture.isDataArrayTexture || texture.isCompressedArrayTexture ) {
 
 				isRenderTarget3D = true;
 
@@ -2201,7 +2175,7 @@ function WebGLRenderer( parameters = {} ) {
 
 		} else {
 
-			if ( srcTexture.isCompressedTexture ) {
+			if ( srcTexture.isCompressedArrayTexture ) {
 
 				console.warn( 'THREE.WebGLRenderer.copyTextureToTexture3D: untested support for compressed srcTexture.' );
 				_gl.compressedTexSubImage3D( glTarget, level, position.x, position.y, position.z, width, height, depth, glFormat, image.data );
@@ -2237,7 +2211,7 @@ function WebGLRenderer( parameters = {} ) {
 
 			textures.setTexture3D( texture, 0 );
 
-		} else if ( texture.isDataArrayTexture ) {
+		} else if ( texture.isDataArrayTexture || texture.isCompressedArrayTexture ) {
 
 			textures.setTexture2DArray( texture, 0 );
 

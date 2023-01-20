@@ -12,6 +12,12 @@ class VaryingNode extends Node {
 
 	}
 
+	isGlobal() {
+
+		return true;
+
+	}
+
 	getHash( builder ) {
 
 		return this.name || super.getHash( builder );
@@ -28,11 +34,13 @@ class VaryingNode extends Node {
 
 	generate( builder ) {
 
+		const { name, node } = this;
 		const type = this.getNodeType( builder );
-		const node = this.node;
-		const name = this.name;
 
 		const nodeVarying = builder.getVaryingFromNode( this, type );
+
+		// this property can be used to check if the varying can be optimized for a var
+		nodeVarying.needsInterpolation ||= builder.shaderStage === 'fragment';
 
 		if ( name !== null ) {
 
@@ -40,10 +48,10 @@ class VaryingNode extends Node {
 
 		}
 
-		const propertyName = builder.getPropertyName( nodeVarying, NodeShaderStage.Vertex );
+		const propertyName = builder.getPropertyName( nodeVarying, NodeShaderStage.VERTEX );
 
 		// force node run in vertex stage
-		builder.flowNodeFromShaderStage( NodeShaderStage.Vertex, node, type, propertyName );
+		builder.flowNodeFromShaderStage( NodeShaderStage.VERTEX, node, type, propertyName );
 
 		return builder.getPropertyName( nodeVarying );
 

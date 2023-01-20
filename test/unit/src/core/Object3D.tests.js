@@ -12,6 +12,7 @@ import {
 	w,
 	eps
 } from '../math/Constants.tests.js';
+import { EventDispatcher } from '../../../../src/core/EventDispatcher.js';
 
 const matrixEquals4 = ( a, b ) => {
 
@@ -54,10 +55,12 @@ export default QUnit.module( 'Core', () => {
 		};
 
 		// INHERITANCE
-		QUnit.todo( 'Extending', ( assert ) => {
+		QUnit.test( 'Extending', ( assert ) => {
 
-			assert.ok( false, 'everything\'s gonna be alright' );
-
+			var object = new Object3D();
+	
+			assert.strictEqual( object instanceof EventDispatcher, true, 'Object3D extends from EventDispatcher' );
+	
 		} );
 
 		// INSTANCING
@@ -527,6 +530,27 @@ export default QUnit.module( 'Core', () => {
 				parent.getObjectByProperty( 'no-property', 'no-value' ), undefined,
 				'Unknown property results in undefined'
 			);
+
+		} );
+
+		QUnit.test( 'getObjectsByProperty', ( assert ) => {
+
+			var parent = new Object3D();
+			var childName = new Object3D();
+			var childNothing = new Object3D();
+			var childName2 = new Object3D();
+			var childName3 = new Object3D();
+
+			parent.prop = true;
+			childName.name = 'foo';
+			childName2.name = 'foo';
+			childName3.name = 'foo';
+			childName2.add( childName3 );
+			childName.add( childName2 );
+			parent.add( childName, childNothing );
+
+			assert.strictEqual( parent.getObjectsByProperty( 'name', 'foo' ).length, 3, 'Get amount of all childs by name "foo"' );
+			assert.strictEqual( parent.getObjectsByProperty( 'name', 'foo' ).some(obj => obj.name !== 'foo') , false, 'Get all childs by name "foo"' );
 
 		} );
 

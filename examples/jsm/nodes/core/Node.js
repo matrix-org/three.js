@@ -12,7 +12,7 @@ class Node {
 
 		this.nodeType = nodeType;
 
-		this.updateType = NodeUpdateType.None;
+		this.updateType = NodeUpdateType.NONE;
 
 		this.uuid = MathUtils.generateUUID();
 
@@ -23,6 +23,12 @@ class Node {
 	get type() {
 
 		return this.constructor.name;
+
+	}
+
+	isGlobal( /*builder*/ ) {
+
+		return false;
 
 	}
 
@@ -49,6 +55,20 @@ class Node {
 			} else if ( object?.isNode === true ) {
 
 				children.push( object );
+
+			} else if ( typeof object === 'object' ) {
+
+				for ( const property in object ) {
+
+					const child = object[ property ];
+
+					if ( child?.isNode === true ) {
+
+						children.push( child );
+
+					}
+
+				}
 
 			}
 
@@ -79,12 +99,6 @@ class Node {
 	getNodeType( /*builder*/ ) {
 
 		return this.nodeType;
-
-	}
-
-	getConstructHash( /*builder*/ ) {
-
-		return this.uuid;
 
 	}
 
