@@ -25,6 +25,7 @@ import { WebGLArrayRenderTarget } from '../renderers/WebGLArrayRenderTarget.js';
 import { MeshBasicMaterial } from '../materials/MeshBasicMaterial.js';
 import { BoxGeometry } from '../geometries/BoxGeometry.js';
 import { BackSide } from '../constants.js';
+import { Vector2 } from '../math/Vector2.js';
 
 const LOD_MIN = 4;
 
@@ -130,15 +131,15 @@ class PMREMGenerator {
 	 * or HDR. The ideal input image size is 1k (1024 x 512),
 	 * as this matches best with the 256 x 256 cubemap output.
 	 */
-	fromEquirectangular( equirectangular, renderTarget = null ) {
+	fromEquirectangular( equirectangular, renderTarget = null, hdrDecodeParams = null ) {
 
-		return this._fromTexture( equirectangular, renderTarget );
+		return this._fromTexture( equirectangular, renderTarget, hdrDecodeParams );
 
 	}
 
-	fromEquirectangularArray( equirectangularTextures ) {
+	fromEquirectangularArray( equirectangularTextures, hdrDecodeParams = null ) {
 
-		return this._fromTextures( equirectangularTextures );
+		return this._fromTextures( equirectangularTextures, hdrDecodeParams );
 
 	}
 
@@ -228,7 +229,7 @@ class PMREMGenerator {
 
 	}
 
-	_fromTexture( texture, renderTarget ) {
+	_fromTexture( texture, renderTarget, hdrDecodeParams ) {
 
 		if ( texture.mapping === CubeReflectionMapping || texture.mapping === CubeRefractionMapping ) {
 
@@ -243,7 +244,7 @@ class PMREMGenerator {
 		_oldTarget = this._renderer.getRenderTarget();
 
 		const cubeUVRenderTarget = renderTarget || this._allocateTargets();
-		this._textureToCubeUV( texture, cubeUVRenderTarget );
+		this._textureToCubeUV( texture, cubeUVRenderTarget, undefined, hdrDecodeParams );
 		this._applyPMREM( cubeUVRenderTarget );
 		this._cleanup( cubeUVRenderTarget );
 
@@ -251,7 +252,7 @@ class PMREMGenerator {
 
 	}
 
-	_fromTextures( textures ) {
+	_fromTextures( textures, hdrDecodeParams ) {
 
 		this._setSize( textures[ 0 ].image.width / 4 );
 
@@ -274,7 +275,7 @@ class PMREMGenerator {
 
 			}
 
-			this._textureToCubeUV( texture, cubeUVRenderTarget, i );
+			this._textureToCubeUV( texture, cubeUVRenderTarget, i, hdrDecodeParams );
 			this._applyPMREM( cubeUVRenderTarget, i );
 
 		}
@@ -411,7 +412,7 @@ class PMREMGenerator {
 
 	}
 
-	_textureToCubeUV( texture, cubeUVRenderTarget, renderTargetIndex ) {
+	_textureToCubeUV( texture, cubeUVRenderTarget, renderTargetIndex, hdrDecodeParams ) {
 
 		const renderer = this._renderer;
 
@@ -443,6 +444,20 @@ class PMREMGenerator {
 		const uniforms = material.uniforms;
 
 		uniforms[ 'envMap' ].value = texture;
+
+		if ( ! isCubeTexture ) {
+
+			if ( hdrDecodeParams ) {
+
+				uniforms[ 'hdrDecodeParams' ].value.copy( hdrDecodeParams );
+
+			} else {
+
+				uniforms[ 'hdrDecodeParams' ].value.set( 1, 1 );
+
+			}
+
+		}
 
 		const size = this._cubeSize;
 
@@ -830,7 +845,8 @@ function _getEquirectMaterial() {
 		name: 'EquirectangularToCubeUV',
 
 		uniforms: {
-			'envMap': { value: null }
+			'envMap': { value: null },
+			'hdrDecodeParams': { value: new Vector2( 1, 1 ) }
 		},
 
 		vertexShader: _getCommonVertexShader(),
@@ -843,6 +859,7 @@ function _getEquirectMaterial() {
 			varying vec3 vOutputDirection;
 
 			uniform sampler2D envMap;
+			uniform vec2 hdrDecodeParams;
 
 			#include <common>
 
@@ -851,7 +868,9 @@ function _getEquirectMaterial() {
 				vec3 outputDirection = normalize( vOutputDirection );
 				vec2 uv = equirectUv( outputDirection );
 
-				gl_FragColor = vec4( texture2D ( envMap, uv ).rgb, 1.0 );
+				vec4 color = texture2D ( envMap, uv );
+				color.rgb = hdrDecodeParams.x * pow(color.a, hdrDecodeParams.y) * color.rgb;
+				gl_FragColor = vec4( color.rgb, 1.0 );
 
 			}
 		`,
