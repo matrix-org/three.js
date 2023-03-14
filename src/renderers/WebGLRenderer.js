@@ -524,21 +524,21 @@ function WebGLRenderer( parameters = {} ) {
 
 	};
 
-	this.setClearColor = function () {
+	this.setClearColor = function ( color, alpha ) {
 
-		background.setClearColor.apply( background, arguments );
+		background.setClearColor( color, alpha );
 
 	};
 
-	this.getClearAlpha = function () {
+	this.getClearAlpha = function ( ) {
 
 		return background.getClearAlpha();
 
 	};
 
-	this.setClearAlpha = function () {
+	this.setClearAlpha = function ( alpha ) {
 
-		background.setClearAlpha.apply( background, arguments );
+		background.setClearAlpha( alpha );
 
 	};
 
@@ -1454,7 +1454,11 @@ function WebGLRenderer( parameters = {} ) {
 		}
 
 		const progUniforms = program.getUniforms();
-		const uniformsList = WebGLUniforms.seqWithValue( progUniforms.seq, uniforms );
+		const uniformsList = WebGLUniforms.seqWithValue(
+			progUniforms.seq,
+			uniforms,
+			materialProperties.uniformsList || []
+		);
 
 		materialProperties.currentProgram = program;
 		materialProperties.uniformsList = uniformsList;

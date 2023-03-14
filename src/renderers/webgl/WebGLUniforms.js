@@ -1126,18 +1126,18 @@ class WebGLUniforms {
 
 	}
 
-	static seqWithValue( seq, values ) {
+	static seqWithValue( seq, values, results ) {
 
-		const r = [];
+		results.length = 0;
 
 		for ( let i = 0, n = seq.length; i !== n; ++ i ) {
 
 			const u = seq[ i ];
-			if ( u.id in values ) r.push( u );
+			if ( u.id in values ) results.push( u );
 
 		}
 
-		return r;
+		return results;
 
 	}
 

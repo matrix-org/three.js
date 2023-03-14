@@ -19,7 +19,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 	const _sources = new WeakMap(); // maps WebglTexture objects to instances of Source
 
-	let _deferredUploads = [];
+	const _deferredUploads = [];
 
 	// cordova iOS (as of 5.0) still uses UIWebView, which provides OffscreenCanvas,
 	// also OffscreenCanvas.getContext("webgl"), but not OffscreenCanvas.getContext("2d")!
@@ -681,14 +681,15 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 		const previousDeferSetting = this.deferTextureUploads;
 		this.deferTextureUploads = false;
 
-		for ( const upload of _deferredUploads ) {
+		for ( let i = 0; i < _deferredUploads.length; i ++ ) {
 
+			const upload = _deferredUploads[ i ];
 			this.uploadTexture( upload.textureProperties, upload.texture, upload.slot );
 			upload.texture.isPendingDeferredUpload = false;
 
 		}
 
-		_deferredUploads = [];
+		_deferredUploads.length = 0;
 
 		this.deferTextureUploads = previousDeferSetting;
 
@@ -1926,11 +1927,30 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		const supportsMips = isPowerOfTwo( renderTarget ) || isWebGL2;
 
-		const textures = renderTarget.isWebGLMultipleRenderTargets === true ? renderTarget.texture : [ renderTarget.texture ];
+		if ( renderTarget.isWebGLMultipleRenderTargets === true ) {
 
-		for ( let i = 0, il = textures.length; i < il; i ++ ) {
+			const textures = renderTarget.texture;
 
-			const texture = textures[ i ];
+			for ( let i = 0, il = textures.length; i < il; i ++ ) {
+
+				const texture = textures[ i ];
+
+				if ( textureNeedsGenerateMipmaps( texture, supportsMips ) ) {
+
+					const target = renderTarget.isWebGLCubeRenderTarget ? _gl.TEXTURE_CUBE_MAP : _gl.TEXTURE_2D;
+					const webglTexture = properties.get( texture ).__webglTexture;
+
+					state.bindTexture( target, webglTexture );
+					generateMipmap( target );
+					state.unbindTexture();
+
+				}
+
+			}
+
+		} else {
+
+			const texture = renderTarget.texture;
 
 			if ( textureNeedsGenerateMipmaps( texture, supportsMips ) ) {
 
@@ -1947,15 +1967,31 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 	}
 
+	const _invalidationArray = [];
+	const _textures = [];
+
 	function updateMultisampleRenderTarget( renderTarget ) {
 
 		if ( ( isWebGL2 && renderTarget.samples > 0 ) && useMultisampledRTT( renderTarget ) === false ) {
 
-			const textures = renderTarget.isWebGLMultipleRenderTargets ? renderTarget.texture : [ renderTarget.texture ];
+			let textures;
+
+			if ( renderTarget.isWebGLMultipleRenderTargets ) {
+
+				textures = renderTarget.texture;
+
+			} else {
+
+				_textures.length = 0;
+				_textures.push( renderTarget.texture );
+				textures = _textures;
+
+			}
+
 			const width = renderTarget.width;
 			const height = renderTarget.height;
 			let mask = _gl.COLOR_BUFFER_BIT;
-			const invalidationArray = [];
+			_invalidationArray.length = 0;
 			const depthStyle = renderTarget.stencilBuffer ? _gl.DEPTH_STENCIL_ATTACHMENT : _gl.DEPTH_ATTACHMENT;
 			const renderTargetProperties = properties.get( renderTarget );
 			const isMultipleRenderTargets = ( renderTarget.isWebGLMultipleRenderTargets === true );
@@ -1980,11 +2016,11 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			for ( let i = 0; i < textures.length; i ++ ) {
 
-				invalidationArray.push( _gl.COLOR_ATTACHMENT0 + i );
+				_invalidationArray.push( _gl.COLOR_ATTACHMENT0 + i );
 
 				if ( renderTarget.depthBuffer ) {
 
-					invalidationArray.push( depthStyle );
+					_invalidationArray.push( depthStyle );
 
 				}
 
@@ -2021,7 +2057,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 				if ( supportsInvalidateFramebuffer ) {
 
-					_gl.invalidateFramebuffer( _gl.READ_FRAMEBUFFER, invalidationArray );
+					_gl.invalidateFramebuffer( _gl.READ_FRAMEBUFFER, _invalidationArray );
 
 				}
 
